@@ -7,6 +7,7 @@ cask "brief" do
   desc "Menu bar calendar with next-meeting countdown and one-click join"
   homepage "https://github.com/yannickpulver/brief"
 
+  depends_on arch: :arm64
   depends_on macos: ">= :sonoma"
 
   app "Brief.app"

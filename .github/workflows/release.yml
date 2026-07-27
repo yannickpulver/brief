@@ -49,7 +49,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           SHA256="$(shasum -a 256 "build/Brief-$VERSION.zip" | cut -d' ' -f1)"
-          gh repo clone yannickpulver/homebrew-tap tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/yannickpulver/homebrew-tap.git" tap
           mkdir -p tap/Casks
           sed -e "s/{{VERSION}}/$VERSION/g" -e "s/{{SHA256}}/$SHA256/g" \
             packaging/brief.rb.template > tap/Casks/brief.rb
