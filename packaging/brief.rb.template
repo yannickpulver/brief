@@ -1,0 +1,17 @@
+cask "brief" do
+  version "{{VERSION}}"
+  sha256 "{{SHA256}}"
+
+  url "https://github.com/yannickpulver/brief/releases/download/v#{version}/Brief-#{version}.zip"
+  name "Brief"
+  desc "Menu bar calendar with next-meeting countdown and one-click join"
+  homepage "https://github.com/yannickpulver/brief"
+
+  depends_on macos: ">= :sonoma"
+
+  app "Brief.app"
+
+  zap trash: [
+    "~/Library/Preferences/com.yannickpulver.brief.plist",
+  ]
+end
