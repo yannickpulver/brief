@@ -45,7 +45,7 @@ enum MenuBarLabel {
     /// Running events show the time remaining instead of a countdown to start.
     static func countdown(from now: Date, to event: UpcomingEvent) -> String? {
         if event.end <= now { return nil }
-        if event.start <= now { return "\(duration(event.end.timeIntervalSince(now))) left" }
+        if event.start <= now { return "-\(duration(event.end.timeIntervalSince(now)))" }
         let seconds = event.start.timeIntervalSince(now)
         guard seconds <= menuBarLookahead else { return nil }
         return duration(seconds)
