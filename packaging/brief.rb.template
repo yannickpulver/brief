@@ -8,7 +8,6 @@ cask "brief" do
   homepage "https://github.com/yannickpulver/brief"
 
   depends_on arch: :arm64
-  depends_on macos: ">= :sonoma"
 
   app "Brief.app"
 
