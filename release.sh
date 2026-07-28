@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Usage: ./release.sh 1.0.0
 # Builds, notarizes, staples, and zips Brief.app for distribution.
+# The version comes from CFBundleShortVersionString in Info.plist.
 # One-time setup: xcrun notarytool store-credentials brief \
 #   --apple-id <apple-id> --team-id 337L47P9N7 --password <app-specific-password>
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${1:?usage: ./release.sh <version>}"
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
 
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Info.plist
 ./build.sh
 
 ZIP="build/Brief-$VERSION.zip"

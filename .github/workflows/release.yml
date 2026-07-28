@@ -1,8 +1,11 @@
 name: Release
 
+# Releases are driven by the version in Info.plist: bump
+# CFBundleShortVersionString, push to main, and this workflow tags,
+# builds, and publishes it — unless that version is already released.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
   contents: write
@@ -13,7 +16,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read version and check for existing release
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists, skipping."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Import signing certificate
+        if: steps.version.outputs.new == 'true'
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -29,25 +47,29 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
 
       - name: Build, notarize, staple
+        if: steps.version.outputs.new == 'true'
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
-        run: ./release.sh "${GITHUB_REF_NAME#v}"
+        run: ./release.sh
 
       - name: Create GitHub release
+        if: steps.version.outputs.new == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "build/Brief-${GITHUB_REF_NAME#v}.zip" \
-            --title "Brief ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release create "v$VERSION" \
+            "build/Brief-$VERSION.zip" \
+            --title "Brief $VERSION" --generate-notes
 
       - name: Update Homebrew tap
+        if: steps.version.outputs.new == 'true'
         env:
           GH_TOKEN: ${{ secrets.TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           SHA256="$(shasum -a 256 "build/Brief-$VERSION.zip" | cut -d' ' -f1)"
           git clone "https://x-access-token:${GH_TOKEN}@github.com/yannickpulver/homebrew-tap.git" tap
           mkdir -p tap/Casks
