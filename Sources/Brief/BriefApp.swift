@@ -96,6 +96,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
+        if let upcoming = model.upcoming, upcoming.start <= Date() {
+            let title = MenuBarLabel.truncate(upcoming.title, limit: 30)
+            menu.addItem(item(title: "Mark “\(title)” as Over", action: #selector(dismissCurrentMeeting), key: ""))
+            menu.addItem(.separator())
+        }
         menu.addItem(item(title: "Settings…", action: #selector(openSettings), key: ","))
         menu.addItem(item(title: "Open Calendar", action: #selector(openCalendar), key: ""))
         menu.addItem(.separator())
@@ -115,6 +120,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.settingsRequested = true
         if !popover.isShown { togglePopover() }
     }
+
+    @objc private func dismissCurrentMeeting() { model.dismissCurrentMeeting() }
 
     @objc private func openCalendar() { model.openCalendarApp() }
 

@@ -84,6 +84,7 @@ final class CalendarModel: ObservableObject {
     private let notifier = MeetingNotifier()
     private var accessGranted = false
     private var timer: Timer?
+    private var dismissedEventIDs: Set<String> = []
 
     private init() {
         let today = Date()
@@ -212,15 +213,21 @@ final class CalendarModel: ObservableObject {
     private func nextEvent(after now: Date) -> UpcomingEvent? {
         guard let horizon = calendar.date(byAdding: .hour, value: 24, to: now) else { return nil }
         let candidate = events(from: now, to: horizon)
-            .filter { !$0.isAllDay && $0.endDate > now }
+            .filter { !$0.isAllDay && $0.endDate > now && !dismissedEventIDs.contains(eventKey($0)) }
             .min { $0.startDate < $1.startDate }
         guard let candidate else { return nil }
         return UpcomingEvent(
+            id: eventKey(candidate),
             title: candidate.title ?? "Untitled",
             start: candidate.startDate,
             end: candidate.endDate,
             link: MeetingLink.detect(in: candidate)
         )
+    }
+
+    /// Occurrence key that also works for unsaved demo events, which have no identifier.
+    private func eventKey(_ event: EKEvent) -> String {
+        "\(event.eventIdentifier ?? event.title ?? "")-\(event.startDate.timeIntervalSince1970)"
     }
 
     private func loadSelectedDay() {
@@ -258,6 +265,13 @@ final class CalendarModel: ObservableObject {
     func link(for event: EKEvent) -> URL? { MeetingLink.detect(in: event) }
 
     // MARK: - Actions
+
+    /// Hides the currently running meeting from the menu bar so the next one shows instead.
+    func dismissCurrentMeeting() {
+        guard let upcoming, upcoming.start <= Date() else { return }
+        dismissedEventIDs.insert(upcoming.id)
+        refreshUpcoming()
+    }
 
     func open(_ url: URL) { NSWorkspace.shared.open(url) }
 
