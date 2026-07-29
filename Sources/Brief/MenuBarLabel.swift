@@ -11,15 +11,13 @@ struct UpcomingEvent {
 
 /// Pure formatting of the menu bar string, kept free of EventKit so it stays easy to reason about.
 enum MenuBarLabel {
-    /// How far ahead an event may start and still show up in the menu bar.
-    static let menuBarLookahead: TimeInterval = 4 * 60 * 60
-
     /// Which parts of the label the user wants to see.
     struct Options {
         var showWeekday = true
         var showDate = true
         var showMeeting = true
         var titleLimit = 15
+        var lookahead: TimeInterval = 4 * 60 * 60
 
         static let `default` = Options()
     }
@@ -34,7 +32,7 @@ enum MenuBarLabel {
         if let datePart = datePart(now: now, calendar: calendar, options: options) {
             parts.append(datePart)
         }
-        if options.showMeeting, let upcoming, let countdown = countdown(from: now, to: upcoming) {
+        if options.showMeeting, let upcoming, let countdown = countdown(from: now, to: upcoming, lookahead: options.lookahead) {
             parts.append("\(countdown) \(truncate(upcoming.title, limit: options.titleLimit))")
         }
         // Never let the pill go empty: fall back to the plain date.
@@ -44,11 +42,11 @@ enum MenuBarLabel {
 
     /// `nil` when the event is over or too far out to be worth showing.
     /// Running events show the time remaining instead of a countdown to start.
-    static func countdown(from now: Date, to event: UpcomingEvent) -> String? {
+    static func countdown(from now: Date, to event: UpcomingEvent, lookahead: TimeInterval) -> String? {
         if event.end <= now { return nil }
         if event.start <= now { return "-\(duration(event.end.timeIntervalSince(now)))" }
         let seconds = event.start.timeIntervalSince(now)
-        guard seconds <= menuBarLookahead else { return nil }
+        guard seconds <= lookahead else { return nil }
         return duration(seconds)
     }
 

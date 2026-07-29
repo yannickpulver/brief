@@ -91,6 +91,24 @@ struct PopoverView: View {
                 }
                 .disabled(!model.showMeeting)
                 .opacity(model.showMeeting ? 1 : 0.5)
+
+                HStack(spacing: 6) {
+                    Text("Show in menu bar from")
+                    Spacer()
+                    Picker("Show in menu bar from", selection: $model.meetingLookaheadMinutes) {
+                        Text("30 minutes").tag(30)
+                        Text("1 hour").tag(60)
+                        Text("2 hours").tag(120)
+                        Text("4 hours").tag(240)
+                        Text("8 hours").tag(480)
+                        Text("24 hours").tag(1440)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+                .disabled(!model.showMeeting)
+                .opacity(model.showMeeting ? 1 : 0.5)
             }
 
             settingsSection("Notifications") {
@@ -240,7 +258,7 @@ private struct JoinBanner: View {
     private var startsIn: String {
         let now = Date()
         if event.start <= now { return "In progress" }
-        guard let countdown = MenuBarLabel.countdown(from: now, to: event) else {
+        guard let countdown = MenuBarLabel.countdown(from: now, to: event, lookahead: .infinity) else {
             return "Starts \(event.start.formatted(date: .omitted, time: .shortened))"
         }
         return "Starts in \(countdown)"

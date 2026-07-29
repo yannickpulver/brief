@@ -49,6 +49,13 @@ final class CalendarModel: ObservableObject {
         }
     }
 
+    @Published var meetingLookaheadMinutes: Int {
+        didSet {
+            UserDefaults.standard.set(meetingLookaheadMinutes, forKey: SettingsKey.meetingLookaheadMinutes)
+            refreshUpcoming()
+        }
+    }
+
     /// How long before a meeting its notification fires; `-1` turns notifications off.
     @Published var notificationLeadSeconds: Int {
         didSet {
@@ -75,6 +82,7 @@ final class CalendarModel: ObservableObject {
         static let showDate = "showDate"
         static let showMeeting = "showMeeting"
         static let meetingTitleLength = "meetingTitleLength"
+        static let meetingLookaheadMinutes = "meetingLookaheadMinutes"
         static let notificationLead = "notificationLeadSeconds"
     }
 
@@ -93,6 +101,8 @@ final class CalendarModel: ObservableObject {
         showMeeting = Self.flag(SettingsKey.showMeeting)
         let storedLength = UserDefaults.standard.object(forKey: SettingsKey.meetingTitleLength)
         meetingTitleLength = (storedLength as? Int) ?? 15
+        let storedLookahead = UserDefaults.standard.object(forKey: SettingsKey.meetingLookaheadMinutes)
+        meetingLookaheadMinutes = (storedLookahead as? Int) ?? 240
         let storedLead = UserDefaults.standard.object(forKey: SettingsKey.notificationLead)
         notificationLeadSeconds = (storedLead as? Int) ?? -1
         selectedDate = today
@@ -118,7 +128,8 @@ final class CalendarModel: ObservableObject {
             showWeekday: showWeekday,
             showDate: showDate,
             showMeeting: showMeeting,
-            titleLimit: meetingTitleLength
+            titleLimit: meetingTitleLength,
+            lookahead: TimeInterval(meetingLookaheadMinutes * 60)
         )
     }
 
