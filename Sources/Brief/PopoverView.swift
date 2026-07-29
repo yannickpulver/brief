@@ -13,7 +13,8 @@ struct PopoverView: View {
             } else {
                 if model.accessDenied {
                     accessDeniedBanner
-                } else if let upcoming = model.upcoming, let link = upcoming.link {
+                } else if let upcoming = model.upcoming, let link = upcoming.link,
+                          upcoming.start.timeIntervalSinceNow <= 10 * 60 {
                     JoinBanner(event: upcoming, link: link) { model.open($0) }
                 }
 
@@ -249,6 +250,7 @@ private struct JoinBanner: View {
             Button("Join") { open(link) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .padding(.trailing, 4)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 5)
