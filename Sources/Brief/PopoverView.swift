@@ -74,6 +74,10 @@ struct PopoverView: View {
                 Spacer()
             }
 
+            settingsSection("General") {
+                toggleRow("Launch at login", isOn: $model.launchAtLogin)
+            }
+
             settingsSection("Menu bar") {
                 toggleRow("Show weekday", isOn: $model.showWeekday)
                 toggleRow("Show date", isOn: $model.showDate)

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import EventKit
+import ServiceManagement
 import SwiftUI
 import UserNotifications
 
@@ -72,6 +73,23 @@ final class CalendarModel: ObservableObject {
         }
     }
 
+    /// Backed by SMAppService, which owns the state; the guard stops the
+    /// didSet loop when a failed change is rolled back to the actual status.
+    @Published var launchAtLogin: Bool {
+        didSet {
+            guard launchAtLogin != (SMAppService.mainApp.status == .enabled) else { return }
+            do {
+                if launchAtLogin {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                launchAtLogin = SMAppService.mainApp.status == .enabled
+            }
+        }
+    }
+
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
 
     /// Set by the menu bar's "Settings…" item so the popover opens straight into settings.
@@ -105,6 +123,7 @@ final class CalendarModel: ObservableObject {
         meetingLookaheadMinutes = (storedLookahead as? Int) ?? 240
         let storedLead = UserDefaults.standard.object(forKey: SettingsKey.notificationLead)
         notificationLeadSeconds = (storedLead as? Int) ?? -1
+        launchAtLogin = SMAppService.mainApp.status == .enabled
         selectedDate = today
         visibleMonth = today
         menuBarTitle = MenuBarLabel.text(
