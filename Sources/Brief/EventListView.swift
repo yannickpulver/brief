@@ -95,6 +95,13 @@ private struct EventRow: View {
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(.secondary)
                     title
+                    if let room {
+                        Text(room)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
             }
             Spacer(minLength: 4)
@@ -125,6 +132,13 @@ private struct EventRow: View {
         let calendar: EKCalendar? = event.calendar
         guard let cgColor: CGColor = calendar?.cgColor else { return .accentColor }
         return Color(cgColor: cgColor)
+    }
+
+    /// The event's location, unless it's just the video-call link the Join button already covers.
+    private var room: String? {
+        let location = (event.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !location.isEmpty, !location.lowercased().hasPrefix("http") else { return nil }
+        return location
     }
 
     private var timeRange: String {

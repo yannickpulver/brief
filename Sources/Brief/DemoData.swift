@@ -21,13 +21,14 @@ enum DemoData {
 
     private static func events(on day: Date, store: EKEventStore, calendar: Calendar) -> [EKEvent] {
         func event(_ title: String, _ startHour: Int, _ startMinute: Int, _ minutes: Int,
-                   link: String? = nil, in cal: EKCalendar) -> EKEvent {
+                   link: String? = nil, room: String? = nil, in cal: EKCalendar) -> EKEvent {
             let event = EKEvent(eventStore: store)
             event.title = title
             event.calendar = cal
             event.startDate = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: day)
             event.endDate = event.startDate.addingTimeInterval(TimeInterval(minutes * 60))
             if let link { event.url = URL(string: link) }
+            event.location = room
             return event
         }
 
@@ -35,7 +36,7 @@ enum DemoData {
         var events = [
             event("Run", 8, 0, 45, in: calendars[3]),
             event("Coffee Time", 9, 0, 30, in: calendars[2]),
-            event("Team Lunch", 12, 0, 60, in: calendars[0]),
+            event("Team Lunch", 12, 0, 60, room: "Kitchen", in: calendars[0]),
             event("Bookclub", 19, 0, 60, link: "https://meet.google.com/abc-defg-hij", in: calendars[1]),
             event("Iceland planning", 20, 0, 60, link: "https://zoom.us/j/123456789", in: calendars[3]),
         ]
