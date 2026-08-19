@@ -43,6 +43,16 @@ final class CalendarModel: ObservableObject {
         didSet { persist(showMeeting, forKey: SettingsKey.showMeeting) }
     }
 
+    @Published var showOutOfOffice: Bool {
+        didSet {
+            UserDefaults.standard.set(showOutOfOffice, forKey: SettingsKey.showOutOfOffice)
+            refreshUpcoming()
+            loadMonth()
+            loadSelectedDay()
+            scheduleNotifications()
+        }
+    }
+
     @Published var meetingTitleLength: Int {
         didSet {
             UserDefaults.standard.set(meetingTitleLength, forKey: SettingsKey.meetingTitleLength)
@@ -99,6 +109,7 @@ final class CalendarModel: ObservableObject {
         static let showWeekday = "showWeekday"
         static let showDate = "showDate"
         static let showMeeting = "showMeeting"
+        static let showOutOfOffice = "showOutOfOffice"
         static let meetingTitleLength = "meetingTitleLength"
         static let meetingLookaheadMinutes = "meetingLookaheadMinutes"
         static let notificationLead = "notificationLeadSeconds"
@@ -117,6 +128,7 @@ final class CalendarModel: ObservableObject {
         showWeekday = Self.flag(SettingsKey.showWeekday)
         showDate = Self.flag(SettingsKey.showDate)
         showMeeting = Self.flag(SettingsKey.showMeeting)
+        showOutOfOffice = Self.flag(SettingsKey.showOutOfOffice)
         let storedLength = UserDefaults.standard.object(forKey: SettingsKey.meetingTitleLength)
         meetingTitleLength = (storedLength as? Int) ?? 15
         let storedLookahead = UserDefaults.standard.object(forKey: SettingsKey.meetingLookaheadMinutes)
@@ -279,11 +291,22 @@ final class CalendarModel: ObservableObject {
 
     private func events(from start: Date, to end: Date) -> [EKEvent] {
         guard accessGranted else { return [] }
+        let events: [EKEvent]
         if DemoData.isActive {
-            return DemoData.events(from: start, to: end, store: store, calendar: calendar)
+            events = DemoData.events(from: start, to: end, store: store, calendar: calendar)
+        } else {
+            let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+            events = store.events(matching: predicate)
         }
-        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        return store.events(matching: predicate)
+        return showOutOfOffice ? events : events.filter { !Self.isOutOfOffice($0) }
+    }
+
+    /// EventKit exposes no out-of-office event type, so match the titles
+    /// Google/Outlook use for these entries.
+    private static func isOutOfOffice(_ event: EKEvent) -> Bool {
+        let title = (event.title ?? "").lowercased()
+        return title.contains("out of office") || title.contains("abwesend")
+            || title.trimmingCharacters(in: .whitespaces) == "ooo"
     }
 
     // MARK: - Queries used by the views

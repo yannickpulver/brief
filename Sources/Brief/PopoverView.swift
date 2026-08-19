@@ -76,6 +76,7 @@ struct PopoverView: View {
 
             settingsSection("General") {
                 toggleRow("Launch at login", isOn: $model.launchAtLogin)
+                toggleRow("Show out-of-office events", isOn: $model.showOutOfOffice)
             }
 
             settingsSection("Menu bar") {
