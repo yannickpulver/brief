@@ -35,8 +35,6 @@ enum MenuBarLabel {
         if options.showMeeting, let upcoming, let countdown = countdown(from: now, to: upcoming, lookahead: options.lookahead) {
             parts.append("\(countdown) \(truncate(upcoming.title, limit: options.titleLimit))")
         }
-        // Never let the pill go empty: fall back to the plain date.
-        guard !parts.isEmpty else { return formatted(now, format: dateFormat, calendar: calendar) }
         return parts.joined(separator: " | ")
     }
 
@@ -64,15 +62,9 @@ enum MenuBarLabel {
         return trimmed.prefix(limit) + "…"
     }
 
-    private static let weekdayFormat = "EEE"
-    private static let dateFormat = "d MMM"
-
     private static func datePart(now: Date, calendar: Calendar, options: Options) -> String? {
-        var formats: [String] = []
-        if options.showWeekday { formats.append(weekdayFormat) }
-        if options.showDate { formats.append(dateFormat) }
-        guard !formats.isEmpty else { return nil }
-        return formatted(now, format: formats.joined(separator: ", "), calendar: calendar)
+        guard options.showWeekday else { return nil }
+        return formatted(now, format: "EEE", calendar: calendar)
     }
 
     private static func formatted(_ date: Date, format: String, calendar: Calendar) -> String {

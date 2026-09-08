@@ -24,17 +24,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = MenuBarIcon.image(for: model.menuBarTitle)
+            button.imagePosition = .imageLeading
             button.target = self
             button.action = #selector(statusItemClicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         statusItem = item
 
-        model.$menuBarTitle
+        model.$menuBarTitle.combineLatest(model.$menuBarDay)
             .receive(on: RunLoop.main)
-            .sink { [weak self] title in
-                MainActor.assumeIsolated { self?.statusItem?.button?.image = MenuBarIcon.image(for: title) }
+            .sink { [weak self] title, day in
+                MainActor.assumeIsolated { self?.updateStatusItem(title: title, day: day) }
             }
             .store(in: &cancellables)
 
@@ -52,6 +52,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Clicks
+
+    private func updateStatusItem(title: String, day: Int?) {
+        guard let button = statusItem?.button else { return }
+        button.image = day.map(MenuBarIcon.image(day:))
+        button.title = title.isEmpty ? "" : " \(title)"
+    }
 
     @objc private func statusItemClicked() {
         let event = NSApp.currentEvent

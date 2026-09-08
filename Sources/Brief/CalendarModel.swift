@@ -10,6 +10,8 @@ final class CalendarModel: ObservableObject {
     static let shared = CalendarModel()
 
     @Published private(set) var menuBarTitle: String = ""
+    /// Day of month shown inside the menu bar calendar glyph; nil hides the glyph.
+    @Published private(set) var menuBarDay: Int?
     @Published private(set) var accessDenied = false
     @Published private(set) var upcoming: UpcomingEvent?
     @Published private(set) var selectedDayEvents: [EKEvent] = []
@@ -141,6 +143,7 @@ final class CalendarModel: ObservableObject {
         menuBarTitle = MenuBarLabel.text(
             now: today, upcoming: nil, calendar: calendar, options: labelOptions
         )
+        menuBarDay = showDate ? calendar.component(.day, from: today) : nil
     }
 
     /// Settings default to on until the user has touched them.
@@ -250,6 +253,7 @@ final class CalendarModel: ObservableObject {
         menuBarTitle = MenuBarLabel.text(
             now: now, upcoming: upcoming, calendar: calendar, options: labelOptions
         )
+        menuBarDay = showDate ? calendar.component(.day, from: now) : nil
     }
 
     private func nextEvent(after now: Date) -> UpcomingEvent? {
