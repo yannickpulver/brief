@@ -7,10 +7,11 @@ BIN_PATH="$(swift build -c release --show-bin-path)"
 
 APP="build/Brief.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN_PATH/Brief" "$APP/Contents/MacOS/Brief"
 cp Info.plist "$APP/Contents/Info.plist"
+cp Resources/Assets.car Resources/AppIcon.icns "$APP/Contents/Resources/"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 # Developer ID + hardened runtime so the app can be notarized; falls back to
