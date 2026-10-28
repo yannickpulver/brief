@@ -22,11 +22,17 @@ struct MonthGridView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Text(monthTitle)
-                .font(.system(size: 12, weight: .semibold))
-                .padding(.leading, 4)
-            Spacer()
+        HStack(spacing: 2) {
+            HStack(spacing: 4) {
+                Text(monthName)
+                    .foregroundStyle(.primary)
+                Text(String(model.calendar.component(.year, from: model.visibleMonth)))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .lineLimit(1)
+            .padding(.leading, 4)
+            Spacer(minLength: 4)
             Button(action: model.showPreviousMonth) {
                 Image(systemName: "chevron.left")
                     .frame(width: 16, height: 16)
@@ -34,7 +40,7 @@ struct MonthGridView: View {
             .help("Previous month")
             Button(action: model.showToday) {
                 Circle()
-                    .frame(width: 6, height: 6)
+                    .frame(width: 5, height: 5)
                     .frame(width: 16, height: 16)
             }
             .help("Today")
@@ -46,7 +52,8 @@ struct MonthGridView: View {
         }
         .buttonStyle(.borderless)
         .foregroundStyle(.secondary)
-        .font(.system(size: 12, weight: .semibold))
+        .font(.system(size: 11, weight: .semibold))
+        .padding(.bottom, 2)
     }
 
     private var weekdayHeader: some View {
@@ -54,7 +61,7 @@ struct MonthGridView: View {
             ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                 Text(symbol)
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -71,11 +78,11 @@ struct MonthGridView: View {
         } label: {
             VStack(spacing: 1) {
                 Text("\(calendar.component(.day, from: day))")
-                    .font(.system(size: 11, weight: isToday ? .bold : .regular))
+                    .font(.system(size: 11, weight: isToday || isSelected ? .semibold : .regular))
                     .monospacedDigit()
                 Circle()
-                    .frame(width: 2.5, height: 2.5)
-                    .opacity(model.hasEvents(on: day) ? 1 : 0)
+                    .frame(width: 3, height: 3)
+                    .opacity(model.hasEvents(on: day) ? (isSelected ? 1 : 0.5) : 0)
             }
             .foregroundStyle(foreground(isSelected: isSelected, isToday: isToday, inMonth: inMonth))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -89,23 +96,23 @@ struct MonthGridView: View {
     private func foreground(isSelected: Bool, isToday: Bool, inMonth: Bool) -> some ShapeStyle {
         if isSelected { return AnyShapeStyle(.white) }
         if isToday { return AnyShapeStyle(Color.accentColor) }
-        return AnyShapeStyle(inMonth ? Color.primary : Color.secondary.opacity(0.5))
+        return AnyShapeStyle(inMonth ? Color.primary : Color.secondary.opacity(0.4))
     }
 
     @ViewBuilder
     private func background(isSelected: Bool, isToday: Bool) -> some View {
         if isSelected {
-            RoundedRectangle(cornerRadius: 6).fill(Color.accentColor)
+            RoundedRectangle(cornerRadius: 7).fill(Color.accentColor.gradient)
         } else if isToday {
-            RoundedRectangle(cornerRadius: 6).strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 7).fill(Color.accentColor.opacity(0.15))
         }
     }
 
-    private var monthTitle: String {
+    private var monthName: String {
         let formatter = DateFormatter()
         formatter.calendar = model.calendar
         formatter.locale = model.calendar.locale ?? .current
-        formatter.setLocalizedDateFormatFromTemplate("yMMMM")
+        formatter.setLocalizedDateFormatFromTemplate("LLLL")
         return formatter.string(from: model.visibleMonth)
     }
 
