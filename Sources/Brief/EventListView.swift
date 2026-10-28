@@ -7,7 +7,7 @@ struct EventListView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 3) {
+                LazyVStack(spacing: 4) {
                     if model.selectedDayEvents.isEmpty {
                         emptyState
                     } else {
@@ -17,17 +17,23 @@ struct EventListView: View {
                         }
                     }
                 }
-                .padding(.trailing, 2)
+                .padding(.top, 6)
                 .padding(.bottom, 12)
             }
+            // The edge fades already signal scrolling; a scroller would eat row width.
+            .scrollIndicators(.never)
             .onAppear { scrollToCurrent(proxy, animated: false) }
             .onChange(of: model.selectedDayEvents) { scrollToCurrent(proxy, animated: true) }
         }
         .frame(height: 200)
-        // Fade the bottom edge so a partially visible row reads as
+        // Fade both edges so a partially visible row reads as
         // "scroll for more" instead of clipped text.
         .mask(
             VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [.clear, .black], startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 6)
                 Rectangle()
                 LinearGradient(
                     colors: [.black, .clear], startPoint: .top, endPoint: .bottom
@@ -83,7 +89,7 @@ private struct EventRow: View {
     let open: (URL) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(accent)
                 .frame(width: 3)
@@ -93,10 +99,12 @@ private struct EventRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(timeRange)
                         .font(.system(size: 9, weight: .medium))
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                     title
                     if let room {
-                        Text(room)
+                        Label(room, systemImage: "mappin")
+                            .labelStyle(RoomLabelStyle())
                             .font(.system(size: 9))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -106,27 +114,29 @@ private struct EventRow: View {
             }
             Spacer(minLength: 4)
             if let link, !isDone {
-                Button("Join") { open(link) }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 10, weight: .medium))
+                JoinButton(isLive: isSoon) { open(link) }
             }
         }
         .opacity(isDone ? 0.45 : 1)
-        .padding(.vertical, event.isAllDay ? 2 : 3)
-        .padding(.horizontal, 5)
-        .frame(minHeight: event.isAllDay ? nil : 27)
+        .padding(.vertical, event.isAllDay ? 3 : 4)
+        .padding(.leading, 4)
+        .padding(.trailing, 6)
+        .frame(minHeight: event.isAllDay ? nil : 30)
         .background(
-            RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.05))
+            RoundedRectangle(cornerRadius: 7).fill(accent.opacity(isDone ? 0.08 : 0.16))
         )
     }
 
     private var title: some View {
         Text(event.title ?? "Untitled")
-            .font(.system(size: 11))
+            .font(.system(size: 11, weight: .medium))
             .lineLimit(event.isAllDay ? 1 : 2)
     }
 
     private var isDone: Bool { event.isDone(at: Date()) }
+
+    /// Running, or starting within ten minutes – same window as the Join banner.
+    private var isSoon: Bool { !event.isAllDay && event.startDate.timeIntervalSinceNow <= 10 * 60 }
 
     private var accent: Color {
         let calendar: EKCalendar? = event.calendar
@@ -144,6 +154,16 @@ private struct EventRow: View {
     private var timeRange: String {
         let formatter = EventRow.timeFormatter
         return "\(formatter.string(from: event.startDate)) – \(formatter.string(from: event.endDate))"
+    }
+
+    /// Icon and text set tight, so the pin reads as part of the room name.
+    private struct RoomLabelStyle: LabelStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: 2) {
+                configuration.icon
+                configuration.title
+            }
+        }
     }
 
     private static let timeFormatter: DateFormatter = {

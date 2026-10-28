@@ -18,20 +18,19 @@ struct PopoverView: View {
                     JoinBanner(event: upcoming, link: link) { model.open($0) }
                 }
 
-                HStack(alignment: .top, spacing: 6) {
+                HStack(alignment: .top, spacing: 10) {
                     MonthGridView(model: model)
-                        .frame(width: 162)
-                    Divider()
+                        .frame(width: 168)
                     EventListView(model: model)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
             }
 
-            Divider()
             footer
         }
-        .frame(width: 340)
+        .frame(width: 360)
         .background(.regularMaterial)
         .onChange(of: model.settingsRequested, initial: true) {
             guard model.settingsRequested else { return }
@@ -51,12 +50,16 @@ struct PopoverView: View {
                 Image(systemName: showingSettings ? "gearshape.fill" : "gearshape")
             }
             .help("Settings")
-            Button("Quit", action: model.quit)
+            Button(action: model.quit) {
+                Image(systemName: "power")
+            }
+            .help("Quit Brief")
         }
         .buttonStyle(.accessoryBar)
-        .font(.system(size: 10))
+        .font(.system(size: 11))
+        .foregroundStyle(.secondary)
         .padding(.horizontal, 6)
-        .padding(.vertical, 4)
+        .padding(.bottom, 6)
     }
 
     private var settings: some View {
@@ -239,10 +242,12 @@ private struct JoinBanner: View {
     let open: (URL) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 9) {
             Image(systemName: "video.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.accentColor)
+                .font(.system(size: 11))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(Color.accentColor.gradient))
             VStack(alignment: .leading, spacing: 1) {
                 Text(event.title)
                     .font(.system(size: 12, weight: .semibold))
@@ -252,14 +257,11 @@ private struct JoinBanner: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Button("Join") { open(link) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .padding(.trailing, 4)
+            JoinButton(large: true, isLive: true) { open(link) }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
-        .background(Color.accentColor.opacity(0.12))
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.accentColor.opacity(0.14)))
+        .padding([.horizontal, .top], 10)
     }
 
     private var startsIn: String {
