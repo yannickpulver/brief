@@ -12,7 +12,11 @@ struct EventListView: View {
                         emptyState
                     } else {
                         ForEach(model.selectedDayEvents, id: \.self) { event in
-                            EventRow(event: event, link: model.link(for: event)) { model.open($0) }
+                            EventRow(
+                                event: event,
+                                link: model.link(for: event),
+                                hidesTitle: model.hidesTitle(of: event)
+                            ) { model.open($0) }
                                 .id(event)
                         }
                     }
@@ -74,6 +78,14 @@ struct EventListView: View {
     }
 }
 
+extension View {
+    /// Blurs a private event's text so it can't be read over the shoulder.
+    func privateBlur(_ isBlurred: Bool) -> some View {
+        blur(radius: isBlurred ? 4 : 0)
+            .animation(.easeOut(duration: 0.2), value: isBlurred)
+    }
+}
+
 private extension EKEvent {
     /// Finished events are dimmed and skipped when scrolling. An all-day event
     /// only counts as finished once its whole day is behind us.
@@ -86,7 +98,11 @@ private extension EKEvent {
 private struct EventRow: View {
     let event: EKEvent
     let link: URL?
+    let hidesTitle: Bool
     let open: (URL) -> Void
+
+    /// A click reveals a blurred private title until the popover closes.
+    @State private var revealed = false
 
     var body: some View {
         HStack(spacing: 7) {
@@ -105,6 +121,7 @@ private struct EventRow: View {
                     if let room {
                         Label(room, systemImage: "mappin")
                             .labelStyle(RoomLabelStyle())
+                            .privateBlur(isBlurred)
                             .font(.system(size: 9))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -125,12 +142,18 @@ private struct EventRow: View {
         .background(
             RoundedRectangle(cornerRadius: 7).fill(accent.opacity(isDone ? 0.08 : 0.16))
         )
+        .contentShape(RoundedRectangle(cornerRadius: 7))
+        .onTapGesture { if hidesTitle { revealed.toggle() } }
+        .help(isBlurred ? "Private – click to reveal" : "")
     }
+
+    private var isBlurred: Bool { hidesTitle && !revealed }
 
     private var title: some View {
         Text(event.title ?? "Untitled")
             .font(.system(size: 11, weight: .medium))
             .lineLimit(event.isAllDay ? 1 : 2)
+            .privateBlur(isBlurred)
     }
 
     private var isDone: Bool { event.isDone(at: Date()) }

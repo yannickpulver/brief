@@ -54,7 +54,7 @@ enum DemoData {
 
     private static var cached: [EKCalendar]?
 
-    private static func demoCalendars(store: EKEventStore) -> [EKCalendar] {
+    static func demoCalendars(store: EKEventStore) -> [EKCalendar] {
         if let cached { return cached }
         let colors: [(String, NSColor)] = [
             ("Work", .systemBlue), ("Design", .systemPurple),

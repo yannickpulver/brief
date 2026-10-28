@@ -35,7 +35,8 @@ final class MeetingNotifier: NSObject {
 
     /// Replaces the pending reminders with ones for `events`, so meetings that moved
     /// or were deleted don't leave a stale banner behind. A negative `lead` means off.
-    func schedule(events: [EKEvent], lead: TimeInterval) {
+    /// `hidesTitle` says whether an event's title is private at the moment its reminder fires.
+    func schedule(events: [EKEvent], lead: TimeInterval, hidesTitle: (EKEvent, Date) -> Bool) {
         guard lead >= 0 else {
             center.removeAllPendingNotificationRequests()
             return
@@ -44,7 +45,8 @@ final class MeetingNotifier: NSObject {
         let requests = events.compactMap { event -> UNNotificationRequest? in
             guard !event.isAllDay, event.startDate > cutoff,
                   let link = MeetingLink.detect(in: event) else { return nil }
-            return request(for: event, link: link, lead: lead)
+            let fireDate = event.startDate.addingTimeInterval(-lead)
+            return request(for: event, link: link, lead: lead, hidesTitle: hidesTitle(event, fireDate))
         }
         Task { await apply(requests) }
     }
@@ -94,9 +96,11 @@ final class MeetingNotifier: NSObject {
         }
     }
 
-    private func request(for event: EKEvent, link: URL, lead: TimeInterval) -> UNNotificationRequest {
+    private func request(
+        for event: EKEvent, link: URL, lead: TimeInterval, hidesTitle: Bool
+    ) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        content.title = event.title ?? "Untitled"
+        content.title = hidesTitle ? "Private event" : event.title ?? "Untitled"
         content.body = Self.body(lead: lead)
         content.sound = .default
         content.categoryIdentifier = NotificationID.category

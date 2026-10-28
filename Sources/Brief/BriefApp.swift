@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Sparkle
 import SwiftUI
 
 @main
@@ -15,6 +16,7 @@ struct BriefApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = CalendarModel.shared
+    private let updater = Updater.shared
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
@@ -103,11 +105,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func contextMenu() -> NSMenu {
         let menu = NSMenu()
         if let upcoming = model.upcoming, upcoming.start <= Date() {
-            let title = MenuBarLabel.truncate(upcoming.title, limit: 30)
+            let title = MenuBarLabel.truncate(upcoming.displayTitle, limit: 30)
             menu.addItem(item(title: "Mark “\(title)” as Over", action: #selector(dismissCurrentMeeting), key: ""))
             menu.addItem(.separator())
         }
         menu.addItem(item(title: "Settings…", action: #selector(openSettings), key: ","))
+        let updates = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        updates.target = updater.controller
+        menu.addItem(updates)
         menu.addItem(item(title: "Open Calendar", action: #selector(openCalendar), key: ""))
         menu.addItem(.separator())
         menu.addItem(item(title: "Quit Brief", action: #selector(quit), key: "q"))
