@@ -32,5 +32,11 @@
 	<string>Brief reads your calendars to show your next meeting in the menu bar.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/yannickpulver/brief/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>qBTKuIkNYkdtCHBx4HicfdpDF+N/ev9mi32+cEFXNfg=</string>
 </dict>
 </plist>

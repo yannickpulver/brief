@@ -54,6 +54,42 @@ jobs:
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
         run: ./release.sh
 
+      - name: Write Sparkle appcast
+        # The app reads releases/latest/download/appcast.xml, so every release carries
+        # a one-item feed for its own zip. The public key is SUPublicEDKey in Info.plist;
+        # the private key is also in 1Password ("Sparkle EdDSA Key: Brief").
+        if: steps.version.outputs.new == 'true'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          # Matches the Sparkle version in Package.swift.
+          SPARKLE_VERSION: "2.10.1"
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          curl -fsSL -o sparkle.tar.xz \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir sparkle && tar -xJf sparkle.tar.xz -C sparkle
+          # Prints `sparkle:edSignature="…" length="…"`, the attributes of <enclosure>.
+          SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | sparkle/bin/sign_update --ed-key-file - "build/Brief-${VERSION}.zip")
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Brief-${VERSION}.zip"
+          cat > build/appcast.xml <<XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Brief</title>
+              <item>
+                <title>Brief ${VERSION}</title>
+                <pubDate>$(date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <sparkle:fullReleaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/v${VERSION}</sparkle:fullReleaseNotesLink>
+                <enclosure url="${URL}" type="application/octet-stream" ${SIGNATURE} />
+              </item>
+            </channel>
+          </rss>
+          XML
+          cat build/appcast.xml
+
       - name: Create GitHub release
         if: steps.version.outputs.new == 'true'
         env:
@@ -61,7 +97,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           gh release create "v$VERSION" \
-            "build/Brief-$VERSION.zip" \
+            "build/Brief-$VERSION.zip" build/appcast.xml \
             --title "Brief $VERSION" --generate-notes
 
       - name: Update Homebrew tap

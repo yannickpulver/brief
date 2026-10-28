@@ -3,6 +3,7 @@ import UserNotifications
 
 struct PopoverView: View {
     @ObservedObject var model: CalendarModel
+    @ObservedObject private var updater = Updater.shared
 
     @State private var showingSettings = false
 
@@ -80,6 +81,17 @@ struct PopoverView: View {
             settingsSection("General") {
                 toggleRow("Launch at login", isOn: $model.launchAtLogin)
                 toggleRow("Show out-of-office events", isOn: $model.showOutOfOffice)
+                HStack(spacing: 6) {
+                    Text("Check for updates automatically")
+                    Spacer()
+                    Button("Check Now", action: updater.checkForUpdates)
+                        .controlSize(.small)
+                        .font(.system(size: 11))
+                    Toggle("Check for updates automatically", isOn: $updater.automaticallyChecksForUpdates)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                }
             }
 
             settingsSection("Menu bar") {
@@ -156,9 +168,72 @@ struct PopoverView: View {
                 .disabled(!notificationsEnabled.wrappedValue)
                 .opacity(notificationsEnabled.wrappedValue ? 1 : 0.5)
             }
+
+            settingsSection("Focus") {
+                toggleRow("Blur private events during work hours", isOn: $model.focusMode)
+
+                Group {
+                    HStack(spacing: 4) {
+                        Text("Work hours, Mon–Fri")
+                        Spacer()
+                        hourPicker("Start", selection: $model.workStartHour, hours: 0..<model.workEndHour)
+                        Text("–").foregroundStyle(.secondary)
+                        hourPicker("End", selection: $model.workEndHour, hours: (model.workStartHour + 1)..<25)
+                    }
+
+                    Text("Private calendars")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    if model.calendars.count > 6 {
+                        ScrollView { privateCalendarList }
+                            .frame(height: 120)
+                    } else {
+                        privateCalendarList
+                    }
+                }
+                .disabled(!model.focusMode)
+                .opacity(model.focusMode ? 1 : 0.5)
+            }
         }
         .font(.system(size: 12))
         .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func hourPicker(_ title: String, selection: Binding<Int>, hours: Range<Int>) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(Array(hours), id: \.self) { hour in
+                Text(String(format: "%02d:00", hour)).tag(hour)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
+    }
+
+    private var privateCalendarList: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(model.calendars, id: \.calendarIdentifier) { calendar in
+                Toggle(isOn: Binding(
+                    get: { model.privateCalendarIDs.contains(calendar.calendarIdentifier) },
+                    set: { model.setPrivate($0, calendar: calendar) }
+                )) {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(Color(cgColor: calendar.cgColor))
+                            .frame(width: 7, height: 7)
+                        Text(calendar.title)
+                            .lineLimit(1)
+                        if let source = calendar.source?.title {
+                            Text(source)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                .toggleStyle(.checkbox)
+            }
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -241,6 +316,8 @@ private struct JoinBanner: View {
     let link: URL
     let open: (URL) -> Void
 
+    @State private var revealed = false
+
     var body: some View {
         HStack(spacing: 9) {
             Image(systemName: "video.fill")
@@ -252,6 +329,8 @@ private struct JoinBanner: View {
                 Text(event.title)
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
+                    .privateBlur(event.hidesTitle && !revealed)
+                    .onTapGesture { if event.hidesTitle { revealed.toggle() } }
                 Text(startsIn)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)

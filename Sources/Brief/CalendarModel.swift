@@ -104,6 +104,42 @@ final class CalendarModel: ObservableObject {
 
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
 
+    // MARK: - Focus mode
+
+    /// Blurs titles of events in `privateCalendarIDs` while it's work time.
+    @Published var focusMode: Bool {
+        didSet {
+            UserDefaults.standard.set(focusMode, forKey: SettingsKey.focusMode)
+            focusSettingsChanged()
+        }
+    }
+
+    @Published var workStartHour: Int {
+        didSet {
+            UserDefaults.standard.set(workStartHour, forKey: SettingsKey.workStartHour)
+            focusSettingsChanged()
+        }
+    }
+
+    @Published var workEndHour: Int {
+        didSet {
+            UserDefaults.standard.set(workEndHour, forKey: SettingsKey.workEndHour)
+            focusSettingsChanged()
+        }
+    }
+
+    @Published var privateCalendarIDs: Set<String> {
+        didSet {
+            UserDefaults.standard.set(Array(privateCalendarIDs), forKey: SettingsKey.privateCalendars)
+            focusSettingsChanged()
+        }
+    }
+
+    /// Event calendars, for picking the private ones in settings.
+    @Published private(set) var calendars: [EKCalendar] = []
+    /// Republished by the 30 s timer so the popover re-blurs when work time starts or ends.
+    @Published private(set) var isWorkTime = false
+
     /// Set by the menu bar's "Settings…" item so the popover opens straight into settings.
     @Published var settingsRequested = false
 
@@ -115,6 +151,10 @@ final class CalendarModel: ObservableObject {
         static let meetingTitleLength = "meetingTitleLength"
         static let meetingLookaheadMinutes = "meetingLookaheadMinutes"
         static let notificationLead = "notificationLeadSeconds"
+        static let focusMode = "focusMode"
+        static let workStartHour = "workStartHour"
+        static let workEndHour = "workEndHour"
+        static let privateCalendars = "privateCalendarIDs"
     }
 
     let calendar = Calendar.current
@@ -138,6 +178,11 @@ final class CalendarModel: ObservableObject {
         let storedLead = UserDefaults.standard.object(forKey: SettingsKey.notificationLead)
         notificationLeadSeconds = (storedLead as? Int) ?? -1
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        let defaults = UserDefaults.standard
+        focusMode = defaults.bool(forKey: SettingsKey.focusMode)
+        workStartHour = (defaults.object(forKey: SettingsKey.workStartHour) as? Int) ?? 8
+        workEndHour = (defaults.object(forKey: SettingsKey.workEndHour) as? Int) ?? 18
+        privateCalendarIDs = Set(defaults.stringArray(forKey: SettingsKey.privateCalendars) ?? [])
         selectedDate = today
         visibleMonth = today
         menuBarTitle = MenuBarLabel.text(
@@ -204,6 +249,7 @@ final class CalendarModel: ObservableObject {
         // Nudge CalendarAgent to re-sync remote accounts (Google etc.); the
         // EKEventStoreChanged notification reloads us again when data arrives.
         store.refreshSourcesIfNecessary()
+        loadCalendars()
         refreshUpcoming()
         loadMonth()
         loadSelectedDay()
@@ -221,7 +267,8 @@ final class CalendarModel: ObservableObject {
         guard let horizon = calendar.date(byAdding: .hour, value: 24, to: now) else { return }
         notifier.schedule(
             events: events(from: now, to: horizon).filter { !$0.isAllDay },
-            lead: TimeInterval(notificationLeadSeconds)
+            lead: TimeInterval(notificationLeadSeconds),
+            hidesTitle: { [weak self] event, date in self?.hidesTitle(of: event, at: date) ?? false }
         )
     }
 
@@ -249,6 +296,7 @@ final class CalendarModel: ObservableObject {
 
     private func refreshUpcoming() {
         let now = Date()
+        isWorkTime = isWorkTime(at: now)
         upcoming = accessGranted ? nextEvent(after: now) : nil
         menuBarTitle = MenuBarLabel.text(
             now: now, upcoming: upcoming, calendar: calendar, options: labelOptions
@@ -267,7 +315,8 @@ final class CalendarModel: ObservableObject {
             title: candidate.title ?? "Untitled",
             start: candidate.startDate,
             end: candidate.endDate,
-            link: MeetingLink.detect(in: candidate)
+            link: MeetingLink.detect(in: candidate),
+            hidesTitle: hidesTitle(of: candidate, at: now)
         )
     }
 
@@ -283,6 +332,12 @@ final class CalendarModel: ObservableObject {
             if lhs.isAllDay != rhs.isAllDay { return lhs.isAllDay }
             return lhs.startDate < rhs.startDate
         }
+    }
+
+    private func loadCalendars() {
+        guard accessGranted else { return }
+        let all = DemoData.isActive ? DemoData.demoCalendars(store: store) : store.calendars(for: .event)
+        calendars = all.sorted { ($0.source?.title ?? "", $0.title) < ($1.source?.title ?? "", $1.title) }
     }
 
     private func loadMonth() {
@@ -320,6 +375,31 @@ final class CalendarModel: ObservableObject {
     }
 
     func link(for event: EKEvent) -> URL? { MeetingLink.detect(in: event) }
+
+    /// Work time is Monday to Friday between the work hours, and only counts with focus mode on.
+    func isWorkTime(at date: Date) -> Bool {
+        guard focusMode, !calendar.isDateInWeekend(date) else { return false }
+        let hour = calendar.component(.hour, from: date)
+        return hour >= workStartHour && hour < workEndHour
+    }
+
+    func hidesTitle(of event: EKEvent, at date: Date = Date()) -> Bool {
+        guard let id = event.calendar?.calendarIdentifier else { return false }
+        return privateCalendarIDs.contains(id) && isWorkTime(at: date)
+    }
+
+    func setPrivate(_ isPrivate: Bool, calendar: EKCalendar) {
+        if isPrivate {
+            privateCalendarIDs.insert(calendar.calendarIdentifier)
+        } else {
+            privateCalendarIDs.remove(calendar.calendarIdentifier)
+        }
+    }
+
+    private func focusSettingsChanged() {
+        refreshUpcoming()
+        scheduleNotifications()
+    }
 
     // MARK: - Actions
 

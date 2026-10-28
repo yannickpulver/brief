@@ -7,6 +7,10 @@ struct UpcomingEvent {
     let start: Date
     let end: Date
     let link: URL?
+    /// Private event during work hours: the menu bar shows `displayTitle` instead.
+    var hidesTitle = false
+
+    var displayTitle: String { hidesTitle ? "Private" : title }
 }
 
 /// Pure formatting of the menu bar string, kept free of EventKit so it stays easy to reason about.
@@ -33,7 +37,7 @@ enum MenuBarLabel {
             parts.append(datePart)
         }
         if options.showMeeting, let upcoming, let countdown = countdown(from: now, to: upcoming, lookahead: options.lookahead) {
-            parts.append("\(countdown) \(truncate(upcoming.title, limit: options.titleLimit))")
+            parts.append("\(countdown) \(truncate(upcoming.displayTitle, limit: options.titleLimit))")
         }
         return parts.joined(separator: " | ")
     }
