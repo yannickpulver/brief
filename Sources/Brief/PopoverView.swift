@@ -174,7 +174,13 @@ struct PopoverView: View {
 
                 Group {
                     HStack(spacing: 4) {
-                        Text("Work hours, Mon–Fri")
+                        Text("Work days")
+                        Spacer()
+                        workDayPicker
+                    }
+
+                    HStack(spacing: 4) {
+                        Text("Work hours")
                         Spacer()
                         hourPicker("Start", selection: $model.workStartHour, hours: 0..<model.workEndHour)
                         Text("–").foregroundStyle(.secondary)
@@ -209,6 +215,30 @@ struct PopoverView: View {
         .labelsHidden()
         .pickerStyle(.menu)
         .fixedSize()
+    }
+
+    /// One chip per weekday, in the order of the user's week.
+    private var workDayPicker: some View {
+        let calendar = model.calendar
+        let days = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
+        return HStack(spacing: 3) {
+            ForEach(days, id: \.self) { day in
+                let isOn = model.workDays.contains(day)
+                Button {
+                    if isOn { model.workDays.remove(day) } else { model.workDays.insert(day) }
+                } label: {
+                    Text(calendar.shortWeekdaySymbols[day - 1].prefix(2))
+                        .font(.system(size: 10, weight: .medium))
+                        .frame(width: 22, height: 18)
+                        .foregroundStyle(isOn ? Color.white : Color.secondary)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(isOn ? Color.accentColor : Color.primary.opacity(0.06))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var privateCalendarList: some View {

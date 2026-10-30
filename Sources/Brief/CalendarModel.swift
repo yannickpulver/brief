@@ -128,6 +128,14 @@ final class CalendarModel: ObservableObject {
         }
     }
 
+    /// Weekdays focus mode applies on, as `Calendar` weekday numbers (1 = Sunday).
+    @Published var workDays: Set<Int> {
+        didSet {
+            UserDefaults.standard.set(Array(workDays), forKey: SettingsKey.workDays)
+            focusSettingsChanged()
+        }
+    }
+
     @Published var privateCalendarIDs: Set<String> {
         didSet {
             UserDefaults.standard.set(Array(privateCalendarIDs), forKey: SettingsKey.privateCalendars)
@@ -154,6 +162,7 @@ final class CalendarModel: ObservableObject {
         static let focusMode = "focusMode"
         static let workStartHour = "workStartHour"
         static let workEndHour = "workEndHour"
+        static let workDays = "workDays"
         static let privateCalendars = "privateCalendarIDs"
     }
 
@@ -182,6 +191,7 @@ final class CalendarModel: ObservableObject {
         focusMode = defaults.bool(forKey: SettingsKey.focusMode)
         workStartHour = (defaults.object(forKey: SettingsKey.workStartHour) as? Int) ?? 8
         workEndHour = (defaults.object(forKey: SettingsKey.workEndHour) as? Int) ?? 18
+        workDays = Set((defaults.array(forKey: SettingsKey.workDays) as? [Int]) ?? [2, 3, 4, 5, 6])
         privateCalendarIDs = Set(defaults.stringArray(forKey: SettingsKey.privateCalendars) ?? [])
         selectedDate = today
         visibleMonth = today
@@ -376,9 +386,9 @@ final class CalendarModel: ObservableObject {
 
     func link(for event: EKEvent) -> URL? { MeetingLink.detect(in: event) }
 
-    /// Work time is Monday to Friday between the work hours, and only counts with focus mode on.
+    /// Work time is a work day between the work hours, and only counts with focus mode on.
     func isWorkTime(at date: Date) -> Bool {
-        guard focusMode, !calendar.isDateInWeekend(date) else { return false }
+        guard focusMode, workDays.contains(calendar.component(.weekday, from: date)) else { return false }
         let hour = calendar.component(.hour, from: date)
         return hour >= workStartHour && hour < workEndHour
     }
